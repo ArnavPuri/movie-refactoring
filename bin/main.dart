@@ -1,24 +1,33 @@
-import 'package:movie_refactoring/movie_refactoring.dart' as movie_refactoring;
+import 'category.dart';
 
 class Movie {
-  static const int CHILDRENS = 2;
-  static const int REGULAR = 0;
-  static const int NEW_RELEASE = 1;
   final String title;
-  int _priceCode;
 
-  Movie(this.title, this._priceCode);
+  Category category;
 
-  int get priceCode => _priceCode;
-
-  set priceCode(int arg) => _priceCode = arg;
+  Movie(this.title, this.category);
 }
 
 class Rental {
   final Movie movie;
   final int daysRented;
+  final Category category;
 
-  Rental(this.movie, this.daysRented);
+  Rental(this.movie, this.daysRented) :
+        category = movie.category;
+
+
+  String formatRentalStatement() {
+    return "\t${movie.title}\t\$${amount.toStringAsFixed(2)}\n";
+  }
+
+  String formatRentalHtmlStatement() {
+    return "${movie.title}: &dollar; ${amount.toStringAsFixed(2)} <br> \n";
+  }
+
+  double get amount => category.calculateAmount(daysRented);
+
+  int get frequentRenterPoints => category.calculateFrequentRenter(daysRented);
 }
 
 class Customer {
@@ -32,60 +41,48 @@ class Customer {
   }
 
   String statement() {
-    double totalAmount = 0;
-    int frequentRenterPoints = 0;
     String result = "Rental Record for " + name + "\n";
-    for (Rental each in _rentals) {
-      double thisAmount = 0;
-      //determine amounts for each line
-      switch (each.movie.priceCode) {
-        case Movie.REGULAR:
-          thisAmount += 2;
-          if (each.daysRented > 2) {
-            thisAmount += (each.daysRented - 2) * 1.5;
-          }
-          break;
-        case Movie.NEW_RELEASE:
-          thisAmount += each.daysRented * 3;
-          break;
-        case Movie.CHILDRENS:
-          thisAmount += 1.5;
-          if (each.daysRented > 3) {
-            thisAmount += (each.daysRented - 3) * 1.5;
-          }
-          break;
-      }
-      // add frequent renter points
-      frequentRenterPoints++;
-      // add bonus for a two day new release rental
-      if ((each.movie.priceCode == Movie.NEW_RELEASE) && each.daysRented > 1) {
-        frequentRenterPoints++;
-      }
-      //show figures for this rental
-      result += "\t${each.movie.title}\t\$${thisAmount.toStringAsFixed(2)}\n";
-      totalAmount += thisAmount;
-    }
+    result += _rentals.map((rental) => rental.formatRentalStatement()).join();
+
     //add footer lines
-    result += "Amount owed is \$${totalAmount.toStringAsFixed(2)}\n";
+    result += "Amount owed is \$${rentalAmount.toStringAsFixed(2)}\n";
     result += "You earned $frequentRenterPoints frequent renter points";
     return result;
   }
+
+  String htmlStatement() {
+    String result = "<h1>Rental Record for <em> $name </em></h1> \n <p>";
+    result +=
+        _rentals.map((rental) => rental.formatRentalHtmlStatement()).join();
+
+    //add footer lines
+    result +=
+    "</p> <p> Amount owed is <EM>&dollar; ${rentalAmount.toStringAsFixed(2)}"
+        "</em>\n </p>";
+    result +=
+    "<p>You earned <em>$frequentRenterPoints</em> frequent renter points</p>";
+    return result;
+  }
+
+  double get rentalAmount =>
+      _rentals.fold(0, (prev, rental) => prev + rental.amount);
+
+  int get frequentRenterPoints =>
+      _rentals.fold(0, (prev, rental) => prev + rental.frequentRenterPoints);
 }
 
 main(List<String> arguments) {
   List<Movie> allMovies = [
-    Movie("The Little Mermaid", Movie.CHILDRENS),
-    Movie("The Lion King", Movie.CHILDRENS),
-    Movie("Shrek", Movie.CHILDRENS),
-    Movie("King Fu Panda", Movie.CHILDRENS),
-    Movie("Toy Story 4", Movie.NEW_RELEASE),
-    Movie("Rocketman", Movie.NEW_RELEASE),
-    Movie("The Godfather", Movie.REGULAR),
+    Movie("The Little Mermaid", Category.CHILDRENS),
+    Movie("The Lion King", Category.CHILDRENS),
+    Movie("Shrek", Category.CHILDRENS),
+    Movie("King Fu Panda", Category.CHILDRENS),
+    Movie("Toy Story 4", Category.NEW_RELEASE),
+    Movie("Rocketman", Category.NEW_RELEASE),
+    Movie("The Godfather", Category.OLD_CLASSICS),
   ];
-
 
   Customer cust = Customer('Steve Lee');
   allMovies.forEach((mov) => cust.addRental(Rental(mov, 4)));
-
   print(cust.statement());
 }
